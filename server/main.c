@@ -7,7 +7,7 @@
 #define BACKLOG 10 
 #define BUFSIZE 1024 
 #define MAX_BUFSIZE 100*1024
-#define MAX_TIMEOUT 20 // 3 minutes
+#define MAX_TIMEOUT 180 // 3 minutes
 
 pthread_mutex_t lock; 
 int num_of_threads;
@@ -99,8 +99,7 @@ void* handle_connection(void* p_clntSocket) {
     int clntSocket = *(int *)p_clntSocket;
     free(p_clntSocket);
 
-    // Start setting time for persistent connection
-    time_t start_time = time(NULL);
+    time_t start_time;
 
     do {
         char buffer[MAX_BUFSIZE]; 
@@ -113,6 +112,9 @@ void* handle_connection(void* p_clntSocket) {
         } else if(bytes_rcvd == 0) { // Stream ended
             continue;
         }
+
+        // Start setting time for persistent connection
+        start_time = time(NULL);
 
         // Print the request 
         buffer[bytes_rcvd] = '\0';

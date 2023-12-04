@@ -11,9 +11,9 @@
 #define BUFSIZE 1024
 #define MAX_BUFSIZE 10*1024
 
-void request_service(int sock, struct Command* cmd);
-void write_to_file(char* file_name, char buffer[], int len);
+void request_service(int sock, struct Command* cmd, char* body);
 void handle_get(char buffer[], int sock, char* file_name, size_t bytes_rcvd);
+void read_file(char* file_name, char* data);
 
 int get_num_chars(char* file_name) {
     FILE* fp = fopen(file_name, "rb");
@@ -81,7 +81,9 @@ int main(int argc, char const* argv[]){
     while(fgets(command, BUFSIZE, cfp) != NULL){
         puts(command);
         struct Command *cmd = parse_command(command);
-        request_service(sock, cmd);
+        char body[BUFSIZE];
+        read_file("body.txt", body);
+        request_service(sock, cmd, body);
     }
 
     fclose(cfp);
@@ -89,13 +91,14 @@ int main(int argc, char const* argv[]){
     return 0;
 }
 
-void request_service(int sock, struct Command* cmd) {
+void request_service(int sock, struct Command* cmd, char* body) {
     char req[BUFSIZE];
     size_t req_len = snprintf(req, BUFSIZE - 1, "%s %s HTTP/1.0\r\n"
                 "Host: localhost\r\n"
                 "Accept: text/html/png\r\n"
+                "Content-length: %lu\r\n"
                 "\r\n"
-                "Empty body for debugging", cmd->method, cmd->file_path);
+                "%s\n", cmd->method, cmd->file_path, strlen(body), body);
     
     //size_t req_len = len;
 
@@ -154,6 +157,9 @@ void handle_get(char buffer[], int sock, char* file_name, size_t bytes_rcvd) {
 
     offset += 2;
 
+    // Clear file
+    fclose(fopen(file_name, "w"));
+    
     FILE *fp = fopen(file_name, "ab");
 
     if(fp == NULL) {
@@ -182,5 +188,18 @@ void handle_get(char buffer[], int sock, char* file_name, size_t bytes_rcvd) {
         tot_bytes += bytes_rcvd;
     }
     
+    fclose(fp);
+}
+
+void read_file(char* file_name, char* data) {
+    FILE *fp = fopen(file_name, "rb"); 
+    if(fp == NULL) { 
+        printf("ERROR(open): %s\n", file_name); 
+        return;
+    } 
+
+    // Read contents of file
+    ssize_t bytes_read;
+    fread(data, 1, BUFSIZE , fp);
     fclose(fp);
 }

@@ -9,7 +9,7 @@
 
 #define PORT 80
 #define BUFSIZE 1024
-#define MAX_BUFSIZE 10*1024
+#define MAX_BUFSIZE 100*1024
 
 void request_service(int sock, struct Command* cmd, char* body);
 void handle_get(char buffer[], int sock, char* file_name, size_t bytes_rcvd);
@@ -24,6 +24,7 @@ int get_num_chars(char* file_name) {
     fclose(fp);
     return count;
 }
+
 
 int main(int argc, char const* argv[]){
 
@@ -81,7 +82,7 @@ int main(int argc, char const* argv[]){
     while(fgets(command, BUFSIZE, cfp) != NULL){
         puts(command);
         struct Command *cmd = parse_command(command);
-        char body[BUFSIZE];
+        char body[MAX_BUFSIZE];
         read_file("body.txt", body);
         request_service(sock, cmd, body);
     }
@@ -92,16 +93,14 @@ int main(int argc, char const* argv[]){
 }
 
 void request_service(int sock, struct Command* cmd, char* body) {
-    char req[BUFSIZE];
-    size_t req_len = snprintf(req, BUFSIZE - 1, "%s %s HTTP/1.0\r\n"
-                "Host: localhost\r\n"
+    char req[MAX_BUFSIZE];
+    size_t req_len = snprintf(req, MAX_BUFSIZE - 1, "%s %s HTTP/1.0\r\n"
+                "Host: %s\r\n"
                 "Accept: text/html/png\r\n"
                 "Content-length: %lu\r\n"
                 "\r\n"
-                "%s\n", cmd->method, cmd->file_path, strlen(body), body);
+                "%s\n", cmd->method, cmd->file_path, cmd->hostname, strlen(body), body);
     
-    //size_t req_len = len;
-
     ssize_t num_bytes = send(sock, req, req_len, 0);
     if(num_bytes < 0) {
         perror("send failed");
@@ -113,8 +112,8 @@ void request_service(int sock, struct Command* cmd, char* body) {
     size_t bytes_rcvd;
     char buffer[BUFSIZE];
 
-    //fputs("Received:\n", stdout);
-    //fflush(stdout);
+    fputs("Received:\n", stdout);
+    fflush(stdout);
 
     if((bytes_rcvd = recv(sock, buffer, BUFSIZE, 0)) > 0) {
         printf("Received %ld bytes\n", bytes_rcvd);
@@ -200,6 +199,6 @@ void read_file(char* file_name, char* data) {
 
     // Read contents of file
     ssize_t bytes_read;
-    fread(data, 1, BUFSIZE , fp);
+    fread(data, 1, MAX_BUFSIZE, fp);
     fclose(fp);
 }

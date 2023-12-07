@@ -32,7 +32,10 @@ struct Request *parse_request(const char *raw) {
  
     // Procced pointer after method 
     raw += method_sz + 1; 
- 
+    
+    size_t sz = strcspn(raw, "/");
+    raw += sz + 1;
+
     // Extract URL 
     size_t url_sz = strcspn(raw, " "); 
     req->url = malloc(url_sz + 1); 

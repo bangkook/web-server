@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for N in {1..1}
+for N in {1..50}
 do
     ruby client.rb &
 done

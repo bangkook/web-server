@@ -1,13 +1,15 @@
 #include <pthread.h>
 #include <time.h>
+#include <arpa/inet.h>
 
 #include "request.c"
+#include <sys/select.h>
 
 #define PORT 8080 
 #define BACKLOG 10 
 #define BUFSIZE 1024 
 #define MAX_BUFSIZE 100*1024
-#define MAX_TIMEOUT 180 // 3 minutes
+#define MAX_TIMEOUT 30 // 3 minutes
 
 pthread_mutex_t lock; 
 int num_of_threads;
@@ -33,9 +35,10 @@ int main(int argc, char const* argv[]){
 
     in_port_t port = atoi(argv[1]);
 
-    int server_fd, client_fd; 
+    int server_fd, client_fd, max_fd; 
     struct sockaddr_in addr; 
     int sin_size = sizeof(struct sockaddr_in); 
+    fd_set read_fds, master_fds;
     int yes = 1; 
  
     // Creating socket file descriptor 
@@ -67,6 +70,8 @@ int main(int argc, char const* argv[]){
         exit(EXIT_FAILURE); 
     }
 
+    printf("Server listening on port %d...\n", port);
+
     while(1) { 
         printf("Waiting for connections...\n"); 
     
@@ -85,8 +90,9 @@ int main(int argc, char const* argv[]){
         pthread_create(&t, NULL, handle_connection, pclient);
         pthread_detach(t);
     } 
-
+    
     puts("Closed\n");
+    close(server_fd);
     return 0; 
 }
 
@@ -100,10 +106,11 @@ void* handle_connection(void* p_clntSocket) {
     free(p_clntSocket);
 
     time_t start_time;
+    start_time = time(NULL);
+    //float time_out = timeout();
 
     do {
         char buffer[MAX_BUFSIZE]; 
-
         // Receive from client 
         ssize_t bytes_rcvd = recv(clntSocket, buffer, MAX_BUFSIZE - 1, 0); 
         if(bytes_rcvd < 0) { 
@@ -115,9 +122,10 @@ void* handle_connection(void* p_clntSocket) {
 
         // Start setting time for persistent connection
         start_time = time(NULL);
-
+        
         // Print the request 
         buffer[bytes_rcvd] = '\0';
+
         printf("REQUEST:\n%s\n", buffer);
         fflush(stdout);
 
@@ -135,8 +143,8 @@ void* handle_connection(void* p_clntSocket) {
     } while (difftime(time(NULL), start_time) < timeout()); 
 
     // Close connection
-    close(clntSocket); 
-     
+    close(clntSocket);
+
     printf("Connection closed with client %d\n", clntSocket); 
 
     // Decrement number of working threads
@@ -191,7 +199,7 @@ void handle_post(int clntSocket, char* url, char* body) {
         printf("ERROR(open): %s\n", url); 
         return;
     } 
-
+    
     fwrite(body, 1, strlen(body), fp);
     fclose(fp);
 }
